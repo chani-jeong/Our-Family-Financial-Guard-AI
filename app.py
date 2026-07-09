@@ -193,6 +193,7 @@ st.markdown("""
         border-radius: var(--radius-lg) !important;
         padding: 20px !important;
         box-shadow: 0 1px 3px rgba(16,26,51,0.05), 0 6px 20px rgba(16,26,51,0.04) !important;
+        overflow: hidden;
     }
 
     /* ======== 버튼 ======== */
