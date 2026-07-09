@@ -463,7 +463,7 @@ with tab1:
 
     with st.container(border=True):
         st.markdown("""
-        <div style="margin:-20px -20px 20px -20px; padding:15px 20px; border-bottom:1px solid var(--c-border); border-radius:19px 19px 0 0; background-color:#FFFFFF; display:flex; align-items:center;">
+        <div style="margin:0 -20px 20px -20px; padding:15px 20px; border-bottom:1px solid var(--c-border); background-color:#FFFFFF; display:flex; align-items:center;">
           <div style="display:flex; align-items:center; gap:8px;">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--c-primary)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s7.5-3.5 7.5-9.5V6l-7.5-3-7.5 3v5.5C4.5 17.5 12 21 12 21z"/><path d="M9 12l2 2 4-4"/></svg>
             <span style="font-size:15px; font-weight:800; color:var(--c-text); letter-spacing:-0.3px;">AI 사기 탐지</span>
