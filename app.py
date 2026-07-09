@@ -4,6 +4,7 @@ from google.genai import types
 from PIL import Image
 import re
 import json
+import time
 
 # ────────────────────────────────────────────────────────────
 # 1. 앱 메타데이터 및 UI 디자인 시스템 주입
@@ -521,11 +522,32 @@ with tab1:
                     if user_input: content_inputs.append(user_input)
                     else: content_inputs.append("첨부 사진 속 금융 사기 정황을 정밀 해독하라.")
 
-                    response = client.models.generate_content(
-                        model="gemini-3.5-flash",
-                        contents=content_inputs,
-                        config=types.GenerateContentConfig(system_instruction=system_instruction)
-                    )
+                    MODEL_CANDIDATES = ["gemini-3.5-flash", "gemini-2.5-flash"]  # 1순위가 계속 과부하면 2순위로 자동 전환
+                    RETRIES_PER_MODEL = 2
+                    last_error = None
+                    response = None
+                    for model_name in MODEL_CANDIDATES:
+                        for attempt in range(RETRIES_PER_MODEL):
+                            try:
+                                response = client.models.generate_content(
+                                    model=model_name,
+                                    contents=content_inputs,
+                                    config=types.GenerateContentConfig(system_instruction=system_instruction)
+                                )
+                                break
+                            except Exception as api_error:
+                                last_error = api_error
+                                err_text = str(api_error)
+                                is_overloaded = "503" in err_text or "UNAVAILABLE" in err_text or "overloaded" in err_text.lower()
+                                if is_overloaded and attempt < RETRIES_PER_MODEL - 1:
+                                    time.sleep(3 * (attempt + 1))  # 3초 → 6초 간격으로 재시도
+                                    continue
+                        if response is not None:
+                            break
+
+                    if response is None:
+                        raise last_error
+
                     res_raw = response.text
 
                     if key_mode == "체험 모드 (무료)":
@@ -623,7 +645,17 @@ with tab1:
                             </div>
                         """, unsafe_allow_html=True)
                 except Exception as e:
-                    st.error(f"❌ 보안망 파싱 분석 도중 기술적 결함이 발생했습니다: {e}")
+                    err_text = str(e)
+                    if "503" in err_text or "UNAVAILABLE" in err_text or "overloaded" in err_text.lower():
+                        st.error("🔄 지금 AI 서버에 접속이 몰려 잠시 응답이 어려워요. 10~20초 후 버튼을 다시 눌러주세요.")
+                    elif "429" in err_text or "RESOURCE_EXHAUSTED" in err_text or "quota" in err_text.lower():
+                        st.error("⏳ 지금 사용량이 많아 잠시 제한이 걸렸어요. 1분 정도 후 다시 시도해주세요.")
+                    elif "API key" in err_text or "API_KEY" in err_text or "PERMISSION_DENIED" in err_text:
+                        st.error("🔑 API 키가 올바르지 않거나 만료됐어요. 좌측 메뉴에서 키를 다시 확인해주세요.")
+                    else:
+                        st.error("❌ 분석 중 문제가 발생했어요. 잠시 후 다시 시도해주세요.")
+                    with st.expander("기술적으로 어떤 오류인지 보기"):
+                        st.code(err_text)
 
 # ----------------- TAB 2: 최신 사기 Top 3 -----------------
 with tab2:
