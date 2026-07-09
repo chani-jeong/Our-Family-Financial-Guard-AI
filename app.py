@@ -26,7 +26,6 @@ st.markdown("""
         --c-primary:#4169E1;
         --c-primary-tint:#EAF3FE;
         --c-primary-dark:#2748AE;
-        --c-link:#1E90FF;
         /* 텍스트 - 진한 남색 계열로 은행 앱다운 대비감 */
         --c-text:#101A33;
         --c-text-secondary:#51607A;
@@ -527,7 +526,10 @@ with tab1:
                     RETRIES_PER_MODEL = 2
                     last_error = None
                     response = None
+                    give_up = False
                     for model_name in MODEL_CANDIDATES:
+                        if give_up:
+                            break
                         for attempt in range(RETRIES_PER_MODEL):
                             try:
                                 response = client.models.generate_content(
@@ -543,6 +545,9 @@ with tab1:
                                 if is_overloaded and attempt < RETRIES_PER_MODEL - 1:
                                     time.sleep(3 * (attempt + 1))  # 3초 → 6초 간격으로 재시도
                                     continue
+                                if not is_overloaded:
+                                    give_up = True  # 과부하가 아닌 오류(키 오류 등)는 재시도·모델 전환이 무의미하므로 즉시 중단
+                                break
                         if response is not None:
                             break
 
