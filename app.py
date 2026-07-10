@@ -5,6 +5,9 @@ from PIL import Image
 import re
 import json
 import time
+import os
+import pandas as pd
+from datetime import datetime
 
 # ────────────────────────────────────────────────────────────
 # 1. 앱 메타데이터 및 UI 디자인 시스템 주입
@@ -346,7 +349,34 @@ def _to_plain(text: str) -> str:
     text = re.sub(r'([.\)"\u201d\u2019])\s+(\d+)\.\s+', r'\1\n\n\2. ', text)
     return text
 
-# 5. 정밀 다이얼로그 팝업 빌더 (콘텐츠 깊이 전면 보강)
+# 5. 커뮤니티 통계 유틸
+#    개인정보/원문은 절대 저장하지 않고, 위험등급·사기유형·시각만 익명으로 누적합니다.
+#    (참고) Streamlit Community Cloud의 파일시스템은 재배포·슬립 시 초기화될 수 있어
+#    완전한 영구 저장은 아니며, 데모/데이터 활용성 시연 목적의 경량 구현입니다.
+STATS_FILE = "diagnosis_stats.json"
+FRAUD_CATEGORIES = ["기관사칭", "가족사칭", "정부지원금", "대환대출", "투자리딩방", "택배스미싱", "해외결제", "청첩장부고장", "기타"]
+
+def _load_stats():
+    if os.path.exists(STATS_FILE):
+        try:
+            with open(STATS_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return []
+    return []
+
+def _log_diagnosis(grade: str, category: str):
+    try:
+        records = _load_stats()
+        records.append({"ts": datetime.now().isoformat(), "grade": grade, "category": category})
+        records = records[-500:]  # 최근 500건만 유지
+        with open(STATS_FILE, "w", encoding="utf-8") as f:
+            json.dump(records, f, ensure_ascii=False)
+    except Exception:
+        pass  # 통계 저장에 실패해도 진단 결과 표시에는 영향 없도록 조용히 무시
+
+
+# 6. 정밀 다이얼로그 팝업 빌더 (콘텐츠 깊이 전면 보강)
 @st.dialog("🛡️ 정밀 분석 결과 및 안전 대처 수칙")
 def show_detail_guide(title, data_dict):
     st.markdown(f"<span class='badge badge-sky'>금융감독원 공식 매뉴얼 연계</span>", unsafe_allow_html=True)
@@ -369,7 +399,7 @@ def show_detail_guide(title, data_dict):
     if st.button("내용을 확인했습니다", type="primary", use_container_width=True):
         st.rerun()
 
-# 6. 긴급 전용 원터치 전화 신고 스크립트 팝업 빌더
+# 7. 긴급 전용 원터치 전화 신고 스크립트 팝업 빌더
 @st.dialog("📞 긴급 전화를 걸기 전 읽어보세요")
 def show_emergency_script(center_name, dial_num, script_text):
     st.markdown(f"<span class='badge badge-red'>골든타임 프로토콜</span>", unsafe_allow_html=True)
@@ -454,7 +484,7 @@ with st.sidebar:
             st.warning("데모 키가 아직 설정되지 않았어요. 배포 시 Streamlit Secrets에 GEMINI_API_KEY를 등록해주세요.")
 
 # --- 완전체 4대 토스 파생형 메인 탭 ---
-tab1, tab2, tab3, tab4 = st.tabs(["실시간 진단", "최신 사기 Top 3", "유형별 대응법", "긴급 신고"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["실시간 진단", "최신 사기 Top 3", "유형별 대응법", "긴급 신고", "커뮤니티 통계"])
 
 # ----------------- TAB 1: 실시간 피싱 진단 -----------------
 with tab1:
@@ -514,7 +544,8 @@ with tab1:
                         "[위험등급]: 위험, 주의, 안심 중 하나\n"
                         "[상황요약]: 노년층이 즉시 이해할 수 있는 한줄 요약\n"
                         "[의심정황]: 피싱이라고 판단되는 구체적 요인 기술\n"
-                        "[대처지침]: 지금 당장 실행할 행동수칙"
+                        "[대처지침]: 지금 당장 실행할 행동수칙\n"
+                        "[사기유형]: 기관사칭, 가족사칭, 정부지원금, 대환대출, 투자리딩방, 택배스미싱, 해외결제, 청첩장부고장, 기타 중 가장 가까운 것 하나만 정확히 그대로 적어줘"
                     )
 
                     content_inputs = []
@@ -564,11 +595,17 @@ with tab1:
                     summary_match = re.search(r'\[상황요약\]\s*:\s*(.*)', res_raw)
                     reasons_match = re.search(r'\[의심정황\]\s*:\s*([\s\S]*?)(?=\[|$)', res_raw)
                     action_match = re.search(r'\[대처지침\]\s*:\s*([\s\S]*?)(?=\[|$)', res_raw)
+                    category_match = re.search(r'\[사기유형\]\s*:\s*(.*)', res_raw)
 
                     grade = grade_match.group(1).strip() if grade_match else "위험"
                     summary_raw = summary_match.group(1).strip() if summary_match else "의심스러운 금융 사기 정황 감지"
                     reasons_raw = reasons_match.group(1).strip() if reasons_match else "출처 불명의 링크 및 자금 탈취 유도 패턴"
                     action_raw = action_match.group(1).strip() if action_match else "절대 송금하거나 링크를 누르지 마십시오."
+                    category_raw = category_match.group(1).strip() if category_match else "기타"
+                    category = next((c for c in FRAUD_CATEGORIES if c in category_raw), "기타")
+
+                    # 입력 원문(문자/사진)은 저장하지 않고, 위험등급·유형만 익명으로 통계에 반영
+                    _log_diagnosis(grade, category)
 
                     # Gemini 응답에 섞인 **볼드** 표기를 실제 HTML로, 번호 매김 사이에 줄바꿈을 넣어 정리
                     summary = _to_html(summary_raw)
@@ -746,3 +783,53 @@ with tab4:
         "자금 이체 및 추가 대화를 차단하고 있으니 본 메시지를 확인하는 즉시 부모님께 직접 음성 통화를 걸어 안전을 확인해 주세요."
     )
     st.text_area("가족 공유용 안내 문구", value=report_template, height=120, label_visibility="collapsed")
+
+# ----------------- TAB 5: 커뮤니티 통계 -----------------
+with tab5:
+    st.write("")
+    st.markdown("<h4 style='font-size: 18px; font-weight: 700; margin-bottom: 4px;'>실시간 진단 통계</h4>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size: 14px; color: var(--c-text-secondary); margin-bottom: 20px;'>이용자들이 실제로 검사한 결과를 익명으로 모은 통계예요. 입력하신 문자·사진 내용은 저장되지 않고, 위험등급과 유형 정보만 집계됩니다.</p>", unsafe_allow_html=True)
+
+    records = _load_stats()
+
+    if not records:
+        st.info("아직 누적된 진단 데이터가 없어요. '실시간 진단' 탭에서 검사를 하면 이곳에 통계가 쌓여요.")
+    else:
+        total = len(records)
+        grade_counts = {"위험": 0, "주의": 0, "안심": 0}
+        for r in records:
+            g = r.get("grade", "")
+            if "위험" in g:
+                grade_counts["위험"] += 1
+            elif "주의" in g:
+                grade_counts["주의"] += 1
+            else:
+                grade_counts["안심"] += 1
+        risk_pct = round(grade_counts["위험"] * 100 / total) if total else 0
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("누적 검사 건수", f"{total}건")
+        col2.metric("위험 판정", f"{grade_counts['위험']}건")
+        col3.metric("위험 비율", f"{risk_pct}%")
+
+        st.write("")
+        st.markdown("<p style='font-size:14px; font-weight:700; color:var(--c-text); margin-bottom:8px;'>최근 가장 많이 발견된 사기 유형</p>", unsafe_allow_html=True)
+
+        cat_counts = {}
+        for r in records:
+            c = r.get("category", "기타")
+            cat_counts[c] = cat_counts.get(c, 0) + 1
+        cat_df = pd.DataFrame(sorted(cat_counts.items(), key=lambda x: x[1], reverse=True), columns=["유형", "건수"]).set_index("유형")
+        st.bar_chart(cat_df, color="#4169E1")
+
+        st.caption(f"최근 {total}건(최대 500건) 기준 · {datetime.now().strftime('%Y-%m-%d %H:%M')} 갱신")
+
+    st.write("")
+    st.markdown("""
+        <div class="toss-card">
+            <p style="margin:0; font-size:13px; color:var(--c-text-muted); line-height:1.6;">
+            ⓘ 이 통계는 이 앱을 통해 진단이 실행될 때마다 위험등급·사기유형만 익명으로 자동 집계돼요.
+            개인정보나 입력하신 문자·사진 원문은 어디에도 저장되지 않습니다.
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
