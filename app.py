@@ -10,7 +10,7 @@ import time
 # 1. 앱 메타데이터 및 UI 디자인 시스템 주입
 #    모토: 토스처럼 동글동글하되, 금융 앱다운 세미포멀함과 접근성을 함께
 # ────────────────────────────────────────────────────────────
-st.set_page_config(page_title="시니어 안심 금융가드 AI", page_icon="🛡️", layout="centered")
+st.set_page_config(page_title="우리가족 금융가드 AI", page_icon="🛡️", layout="centered")
 
 st.markdown("""
     <style>
@@ -276,7 +276,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# 3. 고도화된 정밀 시니어 사기 예방 지식 아카이브 (구조화 데이터셋)
+# 3. 고도화된 정밀 사기 예방 지식 아카이브 (구조화 데이터셋)
 fraud_db = {
     "01 검찰·금융감독원 사칭 협박": {
         "summary": "검찰·경찰·금융감독원 등 국가기관을 사칭하는 수법으로, 2025년 기준 전체 보이스피싱의 51%를 차지하는 가장 빈번한 유형입니다. (출처: 경찰청 국가수사본부, 2016년 대비 발생 건수 약 4배 증가)",
@@ -397,9 +397,9 @@ st.markdown("""
       <path d="M9 12l2 2 4-4"/>
     </svg>
   </div>
-  <h1 style="margin:0; font-size:23px; font-weight:800; color:var(--c-text); letter-spacing:-0.5px;">시니어 안심 금융가드 AI</h1>
+  <h1 style="margin:0; font-size:23px; font-weight:800; color:var(--c-text); letter-spacing:-0.5px;">우리가족 금융가드 AI</h1>
 </div>
-<p style="font-size:14px; color:var(--c-text-secondary); margin:8px 0 4px 0; line-height:1.6;">어르신을 노리는 메신저·투자·정부지원금 사기를, AI가 미리 확인해 드려요.</p>
+<p style="font-size:14px; color:var(--c-text-secondary); margin:8px 0 4px 0; line-height:1.6;">가족을 노리는 주식 리딩방·보이스피싱 사기를, 입금 전에 AI가 먼저 확인해 드려요.</p>
 <div class="trust-row">
   <span class="item">
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
